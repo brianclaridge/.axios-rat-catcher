@@ -20,8 +20,7 @@ pub const C2_PAYLOAD_DOMAIN: &str = "packages.npm.org";
 pub const C2_DOMAINS: &[&str] = &["sfrclak.com", "packages.npm.org"];
 
 /// Spoofed User-Agent used by all RAT variants — IE8 on Windows XP
-/// This is the single most reliable cross-platform detection indicator
-/// per Elastic Security Labs.
+/// Per Elastic: "the toolkit's most reliable detection indicator"
 pub const C2_USER_AGENT: &str =
     "mozilla/4.0 (compatible; msie 8.0; windows nt 5.1; trident/4.0)";
 
@@ -40,6 +39,13 @@ pub const HASH_WINDOWS_BAT: &str =
 pub const HASHES_LINUX_RAT: &[&str] = &[
     "6483c004e207137385f480909d6edecf1b699087378aa91745ecba7c3394f9d7",
     "fcb81618bb15edfdedfb638b4c08a2af9cac9ecfa551af135a8402bf980375cf",
+];
+
+/// npm package shasum (SHA-1) for lockfile integrity field checking
+pub const COMPROMISED_SHASUMS: &[&str] = &[
+    "2553649f232204966871cea80a5d0d6adc700ca",  // axios@1.14.1
+    "d6f3f62fd3b9f5432f5782b62d8cfd5247d5ee71", // axios@0.30.4
+    "07d889e2dadce6f3910dcbc253317d28ca61c766", // plain-crypto-js@4.2.1
 ];
 
 /// Suspicious install hook keywords
@@ -65,3 +71,6 @@ pub const SHELL_NAMES: &[&str] = &[
     "bash", "dash", "sh", "tcsh", "csh", "zsh", "ksh", "fish",
     "cmd.exe", "bash.exe", "powershell.exe", "pwsh.exe",
 ];
+
+/// Max file size (bytes) to parse as JSON. Prevents OOM on malicious files.
+pub const MAX_JSON_SIZE: u64 = 10 * 1024 * 1024; // 10 MB

@@ -49,18 +49,24 @@ fn get_deps(data: &serde_json::Value) -> Vec<(String, String)> {
     out
 }
 
+/// Read a JSON file with size limit to prevent OOM on malicious inputs.
+fn read_json_safe(path: &Path) -> Option<serde_json::Value> {
+    let meta = fs::metadata(path).ok()?;
+    if meta.len() > iocs::MAX_JSON_SIZE {
+        return None;
+    }
+    let content = fs::read_to_string(path).ok()?;
+    serde_json::from_str(&content).ok()
+}
+
 /// Scan a single package.json for IOCs.
 fn scan_package_json(path: &Path) -> Vec<Finding> {
     PACKAGE_JSONS_SCANNED.fetch_add(1, Ordering::Relaxed);
     let mut findings = Vec::new();
 
-    let content = match fs::read_to_string(path) {
-        Ok(c) => c,
-        Err(_) => return findings,
-    };
-    let data: serde_json::Value = match serde_json::from_str(&content) {
-        Ok(v) => v,
-        Err(_) => return findings,
+    let data = match read_json_safe(path) {
+        Some(v) => v,
+        None => return findings,
     };
 
     let path_str = path.display().to_string();
@@ -115,13 +121,10 @@ fn scan_package_json(path: &Path) -> Vec<Finding> {
 /// Scan a lockfile (package-lock.json or npm-shrinkwrap.json) for IOCs.
 fn scan_lockfile(path: &Path) -> Vec<Finding> {
     let mut findings = Vec::new();
-    let content = match fs::read_to_string(path) {
-        Ok(c) => c,
-        Err(_) => return findings,
-    };
-    let data: serde_json::Value = match serde_json::from_str(&content) {
-        Ok(v) => v,
-        Err(_) => return findings,
+
+    let data = match read_json_safe(path) {
+        Some(v) => v,
+        None => return findings,
     };
 
     let path_str = path.display().to_string();
@@ -159,7 +162,77 @@ fn scan_lockfile(path: &Path) -> Vec<Finding> {
                         &format!("Secondary vector '{base}@{version}' in lockfile"),
                     ));
                 }
+
+                // Check integrity/resolved fields for known compromised shasums
+                for field in &["integrity", "resolved"] {
+                    if let Some(val) = info.get(field).and_then(|v| v.as_str()) {
+                        let val_lower = val.to_lowercase();
+                        for shasum in iocs::COMPROMISED_SHASUMS {
+                            if val_lower.contains(shasum) {
+                                findings.push(Finding::critical(
+                                    "compromised-integrity",
+                                    &path_str,
+                                    &format!(
+                                        "Lockfile '{field}' for '{base}' matches compromised shasum {shasum}"
+                                    ),
+                                ));
+                            }
+                        }
+                    }
+                }
             }
+        }
+    }
+
+    findings
+}
+
+/// Scan a pnpm-lock.yaml for compromised versions (plain text search).
+fn scan_pnpm_lock(path: &Path) -> Vec<Finding> {
+    let mut findings = Vec::new();
+    let content = match fs::read_to_string(path) {
+        Ok(c) => c,
+        Err(_) => return findings,
+    };
+    let path_str = path.display().to_string();
+
+    // pnpm lockfile uses format like: /axios@1.14.1: or axios@1.14.1:
+    for (ma, mi, pa) in iocs::COMPROMISED_AXIOS {
+        let patterns = [
+            format!("axios@{ma}.{mi}.{pa}"),
+            format!("/axios/{ma}.{mi}.{pa}"),
+        ];
+        for pattern in &patterns {
+            if content.contains(pattern) {
+                findings.push(Finding::critical(
+                    "pnpm-compromised-axios",
+                    &path_str,
+                    &format!("pnpm-lock.yaml resolves axios to compromised version {ma}.{mi}.{pa}"),
+                ));
+            }
+        }
+    }
+
+    for pkg in iocs::MALICIOUS_PACKAGES
+        .iter()
+        .chain(iocs::SECONDARY_PACKAGES.iter())
+    {
+        if content.contains(pkg) {
+            findings.push(Finding::critical(
+                "pnpm-malicious-dep",
+                &path_str,
+                &format!("Package '{pkg}' referenced in pnpm-lock.yaml"),
+            ));
+        }
+    }
+
+    for shasum in iocs::COMPROMISED_SHASUMS {
+        if content.contains(shasum) {
+            findings.push(Finding::critical(
+                "pnpm-compromised-integrity",
+                &path_str,
+                &format!("Compromised package shasum {shasum} found in pnpm-lock.yaml"),
+            ));
         }
     }
 
@@ -308,6 +381,7 @@ pub struct ScanTargets {
     pub package_jsons: Vec<PathBuf>,
     pub lockfiles: Vec<PathBuf>,
     pub yarn_locks: Vec<PathBuf>,
+    pub pnpm_locks: Vec<PathBuf>,
     pub node_modules_dirs: Vec<PathBuf>,
     pub npm_sources: Vec<NpmSource>,
 }
@@ -317,6 +391,7 @@ pub fn discover(roots: &[PathBuf]) -> ScanTargets {
     let mut package_jsons: Vec<PathBuf> = Vec::new();
     let mut lockfiles: Vec<PathBuf> = Vec::new();
     let mut yarn_locks: Vec<PathBuf> = Vec::new();
+    let mut pnpm_locks: Vec<PathBuf> = Vec::new();
     let mut node_modules_dirs: Vec<PathBuf> = Vec::new();
 
     for root in roots {
@@ -355,6 +430,7 @@ pub fn discover(roots: &[PathBuf]) -> ScanTargets {
                 "package.json" => package_jsons.push(path),
                 "package-lock.json" | "npm-shrinkwrap.json" => lockfiles.push(path),
                 "yarn.lock" => yarn_locks.push(path),
+                "pnpm-lock.yaml" => pnpm_locks.push(path),
                 _ => {}
             }
         }
@@ -377,16 +453,16 @@ pub fn discover(roots: &[PathBuf]) -> ScanTargets {
         let has_lock = project_dir.join("package-lock.json").is_file()
             || project_dir.join("npm-shrinkwrap.json").is_file();
         let has_yarn = project_dir.join("yarn.lock").is_file();
+        let has_pnpm = project_dir.join("pnpm-lock.yaml").is_file();
         let has_nm = project_dir.join("node_modules").is_dir();
 
-        let lockfile_type = if has_lock && has_yarn {
-            Some("npm+yarn".into())
-        } else if has_lock {
-            Some("npm".into())
-        } else if has_yarn {
-            Some("yarn".into())
-        } else {
-            None
+        let lockfile_type = match (has_lock, has_yarn, has_pnpm) {
+            (true, true, _) => Some("npm+yarn".into()),
+            (true, _, true) => Some("npm+pnpm".into()),
+            (true, _, _) => Some("npm".into()),
+            (_, true, _) => Some("yarn".into()),
+            (_, _, true) => Some("pnpm".into()),
+            _ => None,
         };
 
         npm_sources.push(NpmSource {
@@ -402,6 +478,7 @@ pub fn discover(roots: &[PathBuf]) -> ScanTargets {
         package_jsons,
         lockfiles,
         yarn_locks,
+        pnpm_locks,
         node_modules_dirs,
         npm_sources,
     }
@@ -486,6 +563,17 @@ pub fn scan_targets_with_progress(
         })
         .collect();
     findings.extend(yl_findings);
+
+    let pnpm_findings: Vec<Finding> = targets
+        .pnpm_locks
+        .par_iter()
+        .flat_map(|p| {
+            let r = scan_pnpm_lock(p);
+            bump(p);
+            r
+        })
+        .collect();
+    findings.extend(pnpm_findings);
 
     let nm_findings: Vec<Finding> = targets
         .node_modules_dirs

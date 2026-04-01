@@ -134,10 +134,10 @@ echo -e "\033[1m  Scale validation\033[0m"
 echo "  ────────────────────────────────────────"
 TOTAL_PROJECTS=$(echo "$RESULT" | python3 -c "
 import sys, json
-# count unique paths
 data = json.load(sys.stdin)
-# not counting projects, just verifying we have findings
-print(len(data))
+# Handle both flat array and metadata-wrapped output
+findings = data.get('findings', data) if isinstance(data, dict) else data
+print(len(findings))
 " 2>/dev/null || echo "0")
 TOTAL=$((TOTAL + 1))
 if [ "$TOTAL_PROJECTS" -gt 15 ]; then

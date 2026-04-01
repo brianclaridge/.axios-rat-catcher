@@ -82,6 +82,16 @@ impl fmt::Display for Finding {
     }
 }
 
+/// Structured JSON output with scan metadata.
+#[derive(Serialize)]
+pub struct JsonOutput {
+    pub version: String,
+    pub scan_duration_ms: u64,
+    pub dirs_scanned: usize,
+    pub packages_scanned: usize,
+    pub findings: Vec<Finding>,
+}
+
 /// Print a rich tree view of all discovered npm projects, grouped by drive/root.
 pub fn print_tree(targets: &ScanTargets, findings: &[Finding]) {
     // Build a set of paths that have findings for highlighting

@@ -44,6 +44,10 @@ struct Cli {
     #[arg(long, default_value = "0")]
     demo_delay: u64,
 
+    /// Path to write REPORT.txt (default: REPORT.txt, set to "" to disable)
+    #[arg(long, default_value = "REPORT.txt")]
+    report: PathBuf,
+
     /// Path to write npm_sources_map.yml (default: ./npm_sources_map.yml)
     #[arg(long, default_value = "npm_sources_map.yml")]
     sources_map: PathBuf,
@@ -330,6 +334,7 @@ fn main() {
     let total_targets = targets.package_jsons.len()
         + targets.lockfiles.len()
         + targets.yarn_locks.len()
+        + targets.pnpm_locks.len()
         + targets.node_modules_dirs.len();
 
     let pb_scan = if !quiet {
@@ -355,7 +360,14 @@ fn main() {
     let elapsed = start.elapsed();
 
     if quiet {
-        println!("{}", serde_json::to_string_pretty(&findings).unwrap());
+        let output = report::JsonOutput {
+            version: env!("CARGO_PKG_VERSION").to_string(),
+            scan_duration_ms: elapsed.as_millis() as u64,
+            dirs_scanned: report::DIRS_SCANNED.load(Ordering::Relaxed),
+            packages_scanned: report::PACKAGE_JSONS_SCANNED.load(Ordering::Relaxed),
+            findings: findings.clone(),
+        };
+        println!("{}", serde_json::to_string_pretty(&output).unwrap());
         let has_critical = findings.iter().any(|f| f.severity == report::Severity::Critical);
         std::process::exit(if has_critical { 1 } else { 0 });
     }
@@ -363,10 +375,10 @@ fn main() {
     println!();
     report::print_summary(&findings, elapsed);
 
-    // Always write REPORT.txt when there are findings
-    if !findings.is_empty() {
-        let report_path = PathBuf::from("REPORT.txt");
-        report::write_report(&findings, elapsed, &report_path);
+    // Write REPORT.txt when there are findings
+    let report_path = &cli.report;
+    if !findings.is_empty() && !report_path.as_os_str().is_empty() {
+        report::write_report(&findings, elapsed, report_path);
         println!(
             "\n  {} {}",
             "\u{1F4C4}".dimmed(),
