@@ -1,17 +1,15 @@
 Output "/output/test.gif"
 
 Set Theme "Dracula"
-Set FontSize 12
-Set Width 1200
-Set Height 700
-Set Padding 10
-Set TypingSpeed 40ms
-Set PlaybackSpeed 0.5
-Set Framerate 24
+Set FontSize 14
+Set Width 1920
+Set Height 800
+Set Padding 8
+Set TypingSpeed 30ms
+Set Framerate 15
+Set PlaybackSpeed 2
 
-Type "# axios-rat-scan -- scanning 100 npm projects for the axios supply chain RAT"
+Type "bash /demo-run.sh"
 Enter
-Sleep 1s
-Type "axios-rat-scan --no-process /projects"
-Enter
-Sleep 12s
+Sleep 22s
+Sleep 5s

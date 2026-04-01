@@ -12,7 +12,7 @@ FROM ghcr.io/charmbracelet/vhs
 USER root
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3 procps net-tools iproute2 bash \
+    python3 procps net-tools iproute2 bash gifsicle \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /build/target/release/axios-rat-scan /usr/local/bin/axios-rat-scan
@@ -28,7 +28,8 @@ RUN echo 'dropper-payload' > /tmp/6202033
 # ── Test + demo scripts ────────────────────────────────────────
 COPY test/verify.sh /verify.sh
 COPY test/demo.tape /demo.tape
-RUN chmod +x /verify.sh
+COPY test/demo-run.sh /demo-run.sh
+RUN chmod +x /verify.sh /demo-run.sh
 
 WORKDIR /projects
 ENTRYPOINT ["/verify.sh"]

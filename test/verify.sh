@@ -168,7 +168,12 @@ if [ -d /output ] && command -v vhs &> /dev/null; then
     echo 'dropper-payload' > /tmp/6202033
     vhs /demo.tape 2>&1 || true
     if [ -f /output/test.gif ]; then
-        echo -e "  \033[32m\u2713\033[0m Saved to /output/test.gif\n"
+        # Optimize GIF size
+        if command -v gifsicle &> /dev/null; then
+            gifsicle -O3 --lossy=80 /output/test.gif -o /output/test.gif 2>/dev/null || true
+        fi
+        SIZE=$(ls -lh /output/test.gif | awk '{print $5}')
+        echo -e "  \033[32m\u2713\033[0m Saved to /output/test.gif ($SIZE)\n"
     else
         echo -e "  \033[33m! GIF recording skipped (VHS needs chromium in container)\033[0m\n"
     fi
