@@ -66,3 +66,5 @@ cargo build --release
 - [REMEDIATION.md](REMEDIATION.md) — incident response playbook
 - [ATTACK_FLOW.md](ATTACK_FLOW.md) — kill chain diagrams
 - [DESIGN.md](DESIGN.md) — scanner architecture
+
+![rat](./image.png)
