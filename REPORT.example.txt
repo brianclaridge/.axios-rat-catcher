@@ -1,0 +1,147 @@
+AXIOS RAT SCAN REPORT
+=====================
+Scan complete in 0.4s
+Scanned: 250 package.json files, 283 directories
+Findings: 33 critical, 0 warning, 0 info
+
+!! CRITICAL: Evidence of axios RAT compromise detected.
+   See: https://www.elastic.co/security-labs/axios-one-rat-to-rule-them-all
+
+FINDINGS
+--------
+[CRITICAL] rat-artifact: RAT artifact exists: /tmp/ld.py
+    path: /tmp/ld.py
+    sha256: 91ac74d450322a0a29771888e87e056f525ce5b3a48a95d0aba1eab9b135b442 (unknown variant)
+
+[CRITICAL] dropper-artifact: Transient dropper artifact '6202033' found in temp directory
+    path: /tmp/6202033
+
+[CRITICAL] dropper-artifact: Transient dropper artifact '6202033' found in temp directory
+    path: /tmp/6202033
+
+[CRITICAL] compromised-axios: Compromised axios@1.14.1 in dependencies
+    path: /projects/infra/ci-runner-cache/package.json
+
+[CRITICAL] secondary-vector: Secondary attack package '@qqbrowser/openclaw-qbot@0.0.130' in dependencies
+    path: /projects/clients/kilo/frontend/package.json
+
+[CRITICAL] compromised-axios: Compromised axios@1.14.1 in dependencies
+    path: /projects/clients/kilo/frontend/package.json
+
+[CRITICAL] compromised-axios: Compromised axios@0.30.4 in dependencies
+    path: /projects/electron-apps/internal-dashboard/package.json
+
+[CRITICAL] malicious-dep: Malicious package 'plain-crypto-js@4.2.1' in dependencies
+    path: /projects/acme-corp/apps/notification-service/package.json
+
+[CRITICAL] malicious-hook: Suspicious 'postinstall' script: node setup.js
+    path: /projects/acme-corp/apps/notification-service/package.json
+
+[CRITICAL] locked-compromised-axios: Lockfile pins axios@1.14.1
+    path: /projects/infra/ci-runner-cache/package-lock.json
+
+[CRITICAL] locked-malicious-dep: Malicious 'plain-crypto-js@4.2.1' in lockfile
+    path: /projects/infra/ci-runner-cache/package-lock.json
+
+[CRITICAL] locked-secondary-vector: Secondary vector '@qqbrowser/openclaw-qbot@0.0.130' in lockfile
+    path: /projects/clients/kilo/frontend/package-lock.json
+
+[CRITICAL] locked-compromised-axios: Lockfile pins axios@1.14.1
+    path: /projects/clients/kilo/frontend/package-lock.json
+
+[CRITICAL] locked-compromised-axios: Lockfile pins axios@0.30.4
+    path: /projects/electron-apps/internal-dashboard/package-lock.json
+
+[CRITICAL] locked-malicious-dep: Malicious 'plain-crypto-js@4.2.1' in lockfile
+    path: /projects/electron-apps/internal-dashboard/package-lock.json
+
+[CRITICAL] locked-compromised-axios: Lockfile pins axios@1.14.1
+    path: /projects/acme-corp/apps/notification-service/package-lock.json
+
+[CRITICAL] locked-malicious-dep: Malicious 'plain-crypto-js@4.2.1' in lockfile
+    path: /projects/acme-corp/apps/notification-service/package-lock.json
+
+[CRITICAL] installed-malicious-pkg: Malicious package 'plain-crypto-js' installed on disk
+    path: /projects/infra/ci-runner-cache/node_modules/plain-crypto-js
+
+[CRITICAL] active-dropper: Malicious setup.js dropper present (RAT installer)
+    path: /projects/infra/ci-runner-cache/node_modules/plain-crypto-js/setup.js
+    sha256: de44fea4588b9d338091d3c76faa1b7e3cda7615db508dd95612c33c045be18d
+
+[CRITICAL] installed-compromised-axios: Compromised axios@1.14.1 installed
+    path: /projects/infra/ci-runner-cache/node_modules/axios/package.json
+
+[CRITICAL] axios-injected-dep: Installed axios has injected dependency 'plain-crypto-js'
+    path: /projects/infra/ci-runner-cache/node_modules/axios/package.json
+
+[CRITICAL] installed-compromised-axios: Compromised axios@1.14.1 installed
+    path: /projects/clients/kilo/frontend/node_modules/axios/package.json
+
+[CRITICAL] axios-injected-dep: Installed axios has injected dependency 'plain-crypto-js'
+    path: /projects/clients/kilo/frontend/node_modules/axios/package.json
+
+[CRITICAL] installed-secondary-vector: Secondary attack package '@qqbrowser/openclaw-qbot' installed
+    path: /projects/clients/kilo/frontend/node_modules/@qqbrowser/openclaw-qbot
+
+[CRITICAL] installed-malicious-pkg: Malicious package 'plain-crypto-js' installed on disk
+    path: /projects/electron-apps/internal-dashboard/node_modules/plain-crypto-js
+
+[CRITICAL] active-dropper: Malicious setup.js dropper present (RAT installer)
+    path: /projects/electron-apps/internal-dashboard/node_modules/plain-crypto-js/setup.js
+    sha256: de44fea4588b9d338091d3c76faa1b7e3cda7615db508dd95612c33c045be18d
+
+[CRITICAL] installed-compromised-axios: Compromised axios@0.30.4 installed
+    path: /projects/electron-apps/internal-dashboard/node_modules/axios/package.json
+
+[CRITICAL] axios-injected-dep: Installed axios has injected dependency 'plain-crypto-js'
+    path: /projects/electron-apps/internal-dashboard/node_modules/axios/package.json
+
+[CRITICAL] installed-secondary-vector: Secondary attack package '@shadanai/openclaw' installed
+    path: /projects/electron-apps/internal-dashboard/node_modules/@shadanai/openclaw
+
+[CRITICAL] installed-malicious-pkg: Malicious package 'plain-crypto-js' installed on disk
+    path: /projects/acme-corp/apps/notification-service/node_modules/plain-crypto-js
+
+[CRITICAL] active-dropper: Malicious setup.js dropper present (RAT installer)
+    path: /projects/acme-corp/apps/notification-service/node_modules/plain-crypto-js/setup.js
+    sha256: f5e2a860371da15664885549c8daef2ea7d37eab3dca44d275c452179e162100
+
+[CRITICAL] installed-compromised-axios: Compromised axios@1.14.1 installed
+    path: /projects/acme-corp/apps/notification-service/node_modules/axios/package.json
+
+[CRITICAL] axios-injected-dep: Installed axios has injected dependency 'plain-crypto-js'
+    path: /projects/acme-corp/apps/notification-service/node_modules/axios/package.json
+
+AFFECTED PATHS (copy/paste ready)
+---------------------------------
+/projects/acme-corp/apps/notification-service/node_modules/axios/package.json
+/projects/acme-corp/apps/notification-service/node_modules/plain-crypto-js
+/projects/acme-corp/apps/notification-service/node_modules/plain-crypto-js/setup.js
+/projects/acme-corp/apps/notification-service/package-lock.json
+/projects/acme-corp/apps/notification-service/package.json
+/projects/clients/kilo/frontend/node_modules/@qqbrowser/openclaw-qbot
+/projects/clients/kilo/frontend/node_modules/axios/package.json
+/projects/clients/kilo/frontend/package-lock.json
+/projects/clients/kilo/frontend/package.json
+/projects/electron-apps/internal-dashboard/node_modules/@shadanai/openclaw
+/projects/electron-apps/internal-dashboard/node_modules/axios/package.json
+/projects/electron-apps/internal-dashboard/node_modules/plain-crypto-js
+/projects/electron-apps/internal-dashboard/node_modules/plain-crypto-js/setup.js
+/projects/electron-apps/internal-dashboard/package-lock.json
+/projects/electron-apps/internal-dashboard/package.json
+/projects/infra/ci-runner-cache/node_modules/axios/package.json
+/projects/infra/ci-runner-cache/node_modules/plain-crypto-js
+/projects/infra/ci-runner-cache/node_modules/plain-crypto-js/setup.js
+/projects/infra/ci-runner-cache/package-lock.json
+/projects/infra/ci-runner-cache/package.json
+/tmp/6202033
+/tmp/ld.py
+
+REMEDIATION
+-----------
+1. Isolate this machine from the network immediately
+2. Preserve forensic artifacts before remediation
+3. Rotate ALL credentials accessed from this machine
+4. Downgrade axios to 1.14.0 or 0.30.3
+5. Remove plain-crypto-js from node_modules
+6. Block egress to sfrclak.com / 142.11.206.73

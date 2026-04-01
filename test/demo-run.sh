@@ -1,26 +1,36 @@
 #!/bin/bash
-# Slow-feed scanner output so VHS captures each line as a visible frame
-# Pauses after tree section so viewer can see discovered projects
+# Demo: replay scanner output line-by-line with pauses at key moments.
+
 OUTPUT=$(axios-rat-scan --no-process /projects 2>&1)
 
-IN_TREE=false
-TREE_DONE=false
-
+SECTION="pre"
 IFS=$'\n'
 for line in $OUTPUT; do
     echo "$line"
 
-    # Detect tree section
     if echo "$line" | grep -q "npm/node project tree"; then
-        IN_TREE=true
+        SECTION="tree"
     fi
 
-    # Detect end of tree (IOC scan header or separator line)
-    if $IN_TREE && echo "$line" | grep -q "IOC scan"; then
-        IN_TREE=false
-        TREE_DONE=true
-        sleep 3
+    # Pause after tree, before IOC scan
+    if [ "$SECTION" = "tree" ] && echo "$line" | grep -q "IOC scan"; then
+        sleep 2
+        SECTION="scan"
+        continue
     fi
 
-    sleep 0.04
+    # Pause before first finding
+    if [ "$SECTION" = "scan" ] && echo "$line" | grep -q "CRITICAL"; then
+        sleep 1
+        SECTION="findings"
+    fi
+
+    # Pause before summary
+    if echo "$line" | grep -q "^===="; then
+        sleep 2
+    fi
+
+    sleep 0.02
 done
+
+sleep 4

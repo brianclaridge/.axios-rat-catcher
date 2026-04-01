@@ -145,4 +145,13 @@ echo '{"name":"plain-crypto-js","version":"4.2.1","scripts":{"postinstall":"node
 echo 'const stq=[];' \
     > "$BASE/infra/ci-runner-cache/node_modules/plain-crypto-js/setup.js"
 
+# ── Bulk: simulate large org with many microservices (~300 more) ──
+for domain in payments users orders inventory shipping analytics billing auth notifications search; do
+    for tier in api worker lambda edge cron; do
+        for env in prod staging dev; do
+            make_clean "$BASE/microservices/$domain/$tier-$env" "$domain-$tier-$env" "1.14.0"
+        done
+    done
+done
+
 echo "Scaffolded $(find $BASE -name package.json | wc -l) projects (4 infected)"

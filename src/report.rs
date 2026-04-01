@@ -200,3 +200,78 @@ pub fn print_summary(findings: &[Finding], elapsed: std::time::Duration) {
         println!("\n{}", "No evidence of compromise found.".green().bold());
     }
 }
+
+/// Write a plain-text REPORT.txt with all findings and affected paths.
+pub fn write_report(findings: &[Finding], elapsed: std::time::Duration, report_path: &std::path::Path) {
+    use std::io::Write;
+
+    let mut f = match std::fs::File::create(report_path) {
+        Ok(f) => f,
+        Err(e) => {
+            eprintln!("Failed to write report: {e}");
+            return;
+        }
+    };
+
+    let crits = findings.iter().filter(|f| f.severity == Severity::Critical).count();
+    let warns = findings.iter().filter(|f| f.severity == Severity::Warning).count();
+    let infos = findings.iter().filter(|f| f.severity == Severity::Info).count();
+
+    writeln!(f, "AXIOS RAT SCAN REPORT").ok();
+    writeln!(f, "=====================").ok();
+    writeln!(f, "Scan complete in {:.1}s", elapsed.as_secs_f64()).ok();
+    writeln!(f, "Scanned: {} package.json files, {} directories",
+        PACKAGE_JSONS_SCANNED.load(Ordering::Relaxed),
+        DIRS_SCANNED.load(Ordering::Relaxed),
+    ).ok();
+    writeln!(f, "Findings: {} critical, {} warning, {} info", crits, warns, infos).ok();
+    writeln!(f).ok();
+
+    if crits > 0 {
+        writeln!(f, "!! CRITICAL: Evidence of axios RAT compromise detected.").ok();
+        writeln!(f, "   See: https://www.elastic.co/security-labs/axios-one-rat-to-rule-them-all").ok();
+        writeln!(f).ok();
+    }
+
+    // Group findings by severity
+    let mut sorted: Vec<&Finding> = findings.iter().collect();
+    sorted.sort_by(|a, b| b.severity.cmp(&a.severity));
+
+    writeln!(f, "FINDINGS").ok();
+    writeln!(f, "--------").ok();
+    for finding in &sorted {
+        writeln!(f, "[{}] {}: {}", finding.severity, finding.category, finding.detail).ok();
+        writeln!(f, "    path: {}", finding.path).ok();
+        if let Some(h) = &finding.hash {
+            writeln!(f, "    sha256: {h}").ok();
+        }
+        writeln!(f).ok();
+    }
+
+    // Deduplicated list of affected paths for easy copy/paste
+    let mut affected: Vec<&str> = findings
+        .iter()
+        .filter(|f| f.severity == Severity::Critical)
+        .map(|f| f.path.as_str())
+        .collect();
+    affected.sort();
+    affected.dedup();
+
+    if !affected.is_empty() {
+        writeln!(f, "AFFECTED PATHS (copy/paste ready)").ok();
+        writeln!(f, "---------------------------------").ok();
+        for path in &affected {
+            writeln!(f, "{path}").ok();
+        }
+        writeln!(f).ok();
+    }
+
+    writeln!(f, "REMEDIATION").ok();
+    writeln!(f, "-----------").ok();
+    writeln!(f, "1. Isolate this machine from the network immediately").ok();
+    writeln!(f, "2. Preserve forensic artifacts before remediation").ok();
+    writeln!(f, "3. Rotate ALL credentials accessed from this machine").ok();
+    writeln!(f, "4. Downgrade axios to 1.14.0 or 0.30.3").ok();
+    writeln!(f, "5. Remove plain-crypto-js from node_modules").ok();
+    writeln!(f, "6. Block egress to sfrclak.com / 142.11.206.73").ok();
+}

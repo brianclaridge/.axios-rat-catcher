@@ -36,6 +36,14 @@ struct Cli {
     #[arg(long)]
     no_tree: bool,
 
+    /// Number of scan threads (default: all CPUs)
+    #[arg(long, short = 'j')]
+    threads: Option<usize>,
+
+    /// Delay in seconds after each scan phase (for demos/recordings, default: 0)
+    #[arg(long, default_value = "0")]
+    demo_delay: u64,
+
     /// Path to write npm_sources_map.yml (default: ./npm_sources_map.yml)
     #[arg(long, default_value = "npm_sources_map.yml")]
     sources_map: PathBuf,
@@ -111,8 +119,23 @@ fn bar_style() -> ProgressStyle {
     .progress_chars("\u{2588}\u{2593}\u{2591}")
 }
 
+fn demo_pause(secs: u64) {
+    if secs > 0 {
+        std::thread::sleep(Duration::from_secs(secs));
+    }
+}
+
 fn main() {
     let cli = Cli::parse();
+
+    // Configure rayon thread pool
+    if let Some(threads) = cli.threads {
+        rayon::ThreadPoolBuilder::new()
+            .num_threads(threads)
+            .build_global()
+            .ok();
+    }
+
     let start = Instant::now();
     let quiet = cli.json;
 
@@ -167,6 +190,7 @@ fn main() {
     };
 
     scanner::filesystem::scan(&mut findings);
+    demo_pause(cli.demo_delay);
     if let Some(pb) = &pb_host {
         pb.set_message("done".green().to_string());
         pb.finish();
@@ -185,6 +209,7 @@ fn main() {
             None
         };
         scanner::registry::scan(&mut findings);
+        demo_pause(cli.demo_delay);
         if let Some(pb) = &pb_reg {
             pb.set_message("done".green().to_string());
             pb.finish();
@@ -203,6 +228,7 @@ fn main() {
             None
         };
         scanner::process::scan(&mut findings);
+        demo_pause(cli.demo_delay);
         if let Some(pb) = &pb_proc {
             pb.set_message("done".green().to_string());
             pb.finish();
@@ -219,6 +245,7 @@ fn main() {
             None
         };
         scanner::network::scan(&mut findings);
+        demo_pause(cli.demo_delay);
         if let Some(pb) = &pb_net {
             pb.set_message("done".green().to_string());
             pb.finish();
@@ -292,6 +319,7 @@ fn main() {
     // ── Tree view ───────────────────────────────────────────────
     if !cli.no_tree && !quiet {
         report::print_tree(&targets, &[]);
+        demo_pause(cli.demo_delay * 2); // longer pause to read the tree
     }
 
     // ── Phase 2: IOC scan ───────────────────────────────────────
@@ -316,6 +344,7 @@ fn main() {
 
     let npm_findings = scanner::npm::scan_targets_with_progress(&targets, &pb_scan);
     findings.extend(npm_findings);
+    demo_pause(cli.demo_delay);
 
     if let Some(pb) = &pb_scan {
         pb.set_message("complete".green().to_string());
@@ -333,6 +362,18 @@ fn main() {
 
     println!();
     report::print_summary(&findings, elapsed);
+
+    // Always write REPORT.txt when there are findings
+    if !findings.is_empty() {
+        let report_path = PathBuf::from("REPORT.txt");
+        report::write_report(&findings, elapsed, &report_path);
+        println!(
+            "\n  {} {}",
+            "\u{1F4C4}".dimmed(),
+            format!("Report written to {}", report_path.display()).dimmed(),
+        );
+    }
+
     let has_critical = findings.iter().any(|f| f.severity == report::Severity::Critical);
     std::process::exit(if has_critical { 1 } else { 0 });
 }
