@@ -66,3 +66,15 @@ tasks:
     desc: Run clippy lints
     cmds:
       - cargo clippy -- -W clippy::all
+
+  test:
+    desc: Build + run integration tests in Docker (compiles Linux binary, plants IOCs, verifies detection)
+    cmds:
+      - docker build -t axios-rat-test -f test/Dockerfile .
+      - docker run --rm axios-rat-test
+
+  test-interactive:
+    desc: Shell into the test container for debugging
+    cmds:
+      - docker build -t axios-rat-test -f test/Dockerfile .
+      - docker run --rm -it --entrypoint /bin/bash axios-rat-test

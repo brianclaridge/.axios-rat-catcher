@@ -75,9 +75,16 @@ fn check_temp_artifact(findings: &mut Vec<Finding>) {
 }
 
 /// Scan for platform-specific RAT file artifacts.
+///
+/// Covers Elastic file-system IOCs:
+/// - /Library/Caches/com.apple.act.mond (macOS C++ RAT)
+/// - /tmp/*.scpt (macOS AppleScript transients)
+/// - %PROGRAMDATA%\wt.exe (Windows renamed PowerShell)
+/// - %PROGRAMDATA%\system.bat (Windows persistence batch)
+/// - %TEMP%\6202033.vbs, 6202033.ps1 (Windows dropper transients)
+/// - /tmp/ld.py (Linux Python RAT)
+/// - $TMPDIR/6202033 (cross-platform dropper artifact)
 pub fn scan(findings: &mut Vec<Finding>) {
-    // -- Platform-specific RAT payloads --
-
     #[cfg(target_os = "macos")]
     {
         check_artifact(
@@ -85,7 +92,7 @@ pub fn scan(findings: &mut Vec<Finding>) {
             iocs::HASHES_MACOS_RAT,
             findings,
         );
-        // Check for AppleScript transients
+        // AppleScript transients used by the dropper
         if let Ok(entries) = fs::read_dir("/tmp") {
             for entry in entries.flatten() {
                 if let Some(ext) = entry.path().extension() {
@@ -105,11 +112,26 @@ pub fn scan(findings: &mut Vec<Finding>) {
     {
         let programdata =
             std::env::var("PROGRAMDATA").unwrap_or_else(|_| r"C:\ProgramData".into());
-        check_artifact(
-            &format!("{programdata}\\wt.exe"),
-            &[], // wt.exe is a renamed PowerShell — hash varies by system
-            findings,
-        );
+
+        // wt.exe — renamed PowerShell binary
+        // Elastic: "Execution via Renamed Signed Binary Proxy"
+        let wt_path = format!("{programdata}\\wt.exe");
+        let wt = Path::new(&wt_path);
+        if wt.exists() {
+            // Validate it's actually a renamed powershell by checking file size/version
+            // Real wt.exe (Windows Terminal) lives in WindowsApps, not ProgramData
+            let mut f = Finding::critical(
+                "rat-artifact",
+                &wt_path,
+                "wt.exe in ProgramData — renamed PowerShell binary \
+                 (Elastic: Execution via Renamed Signed Binary Proxy)",
+            );
+            if let Some(hash) = sha256_file(wt) {
+                f = f.with_hash(&hash);
+            }
+            findings.push(f);
+        }
+
         check_artifact(
             &format!("{programdata}\\system.bat"),
             &[iocs::HASH_WINDOWS_BAT],

@@ -11,6 +11,19 @@ pub const SECONDARY_PACKAGES: &[&str] = &["@shadanai/openclaw", "@qqbrowser/open
 pub const C2_DOMAIN: &str = "sfrclak.com";
 pub const C2_IP: &str = "142.11.206.73";
 pub const C2_PORT: u16 = 8000;
+pub const C2_ENDPOINT: &str = "/6202033";
+
+/// Typosquat payload distribution domain (NOT the real npm registry)
+pub const C2_PAYLOAD_DOMAIN: &str = "packages.npm.org";
+
+/// All C2 domains to check in DNS caches and network connections
+pub const C2_DOMAINS: &[&str] = &["sfrclak.com", "packages.npm.org"];
+
+/// Spoofed User-Agent used by all RAT variants — IE8 on Windows XP
+/// This is the single most reliable cross-platform detection indicator
+/// per Elastic Security Labs.
+pub const C2_USER_AGENT: &str =
+    "mozilla/4.0 (compatible; msie 8.0; windows nt 5.1; trident/4.0)";
 
 /// SHA-256 hashes of known malicious files
 pub const HASH_SETUP_JS: &str =
@@ -39,4 +52,16 @@ pub const SKIP_DIRS: &[&str] = &[
     "System Volume Information",
     "$RECYCLE.BIN",
     "Windows",
+];
+
+/// Process names that should never be spawned by node as children
+/// (Elastic: "Curl or Wget Spawned via Node.js" detection rule)
+pub const SUSPICIOUS_NODE_CHILDREN: &[&str] = &[
+    "curl", "wget", "curl.exe", "wget.exe",
+];
+
+/// Shell interpreters (for parent-child chain detection)
+pub const SHELL_NAMES: &[&str] = &[
+    "bash", "dash", "sh", "tcsh", "csh", "zsh", "ksh", "fish",
+    "cmd.exe", "bash.exe", "powershell.exe", "pwsh.exe",
 ];
