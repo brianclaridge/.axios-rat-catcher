@@ -434,35 +434,67 @@ pub fn write_sources_map(targets: &ScanTargets, output: &Path) {
     }
 }
 
-/// Scan all discovered targets in parallel, return findings.
-pub fn scan_targets(targets: &ScanTargets) -> Vec<Finding> {
+/// Scan all discovered targets in parallel with progress reporting.
+pub fn scan_targets_with_progress(
+    targets: &ScanTargets,
+    pb: &Option<indicatif::ProgressBar>,
+) -> Vec<Finding> {
     let mut findings: Vec<Finding> = Vec::new();
+
+    let bump = |p: &Path| {
+        if let Some(pb) = pb {
+            let name = p.file_name().unwrap_or_default().to_string_lossy();
+            // Show parent dir for context
+            let parent = p.parent()
+                .and_then(|pp| pp.file_name())
+                .map(|f| f.to_string_lossy().to_string())
+                .unwrap_or_default();
+            pb.set_message(format!("{parent}/{name}"));
+            pb.inc(1);
+        }
+    };
 
     let pj_findings: Vec<Finding> = targets
         .package_jsons
         .par_iter()
-        .flat_map(|p| scan_package_json(p))
+        .flat_map(|p| {
+            let r = scan_package_json(p);
+            bump(p);
+            r
+        })
         .collect();
     findings.extend(pj_findings);
 
     let lf_findings: Vec<Finding> = targets
         .lockfiles
         .par_iter()
-        .flat_map(|p| scan_lockfile(p))
+        .flat_map(|p| {
+            let r = scan_lockfile(p);
+            bump(p);
+            r
+        })
         .collect();
     findings.extend(lf_findings);
 
     let yl_findings: Vec<Finding> = targets
         .yarn_locks
         .par_iter()
-        .flat_map(|p| scan_yarn_lock(p))
+        .flat_map(|p| {
+            let r = scan_yarn_lock(p);
+            bump(p);
+            r
+        })
         .collect();
     findings.extend(yl_findings);
 
     let nm_findings: Vec<Finding> = targets
         .node_modules_dirs
         .par_iter()
-        .flat_map(|p| scan_node_modules(p))
+        .flat_map(|p| {
+            let r = scan_node_modules(p);
+            bump(p);
+            r
+        })
         .collect();
     findings.extend(nm_findings);
 
