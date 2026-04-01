@@ -1,14 +1,16 @@
-Output /output/test.gif
-Set Theme "Dracula"
-Set FontSize 13
-Set Width 1100
-Set Height 650
-Set Padding 10
-Set TypingSpeed 30ms
+Output "/output/test.gif"
 
-Type "# axios-rat-scan — scanning 100 npm projects for supply chain RAT"
+Set Theme "Dracula"
+Set FontSize 12
+Set Width 1200
+Set Height 700
+Set Padding 10
+Set TypingSpeed 40ms
+Set PlaybackSpeed 1.5
+
+Type "# axios-rat-scan -- scanning 100 npm projects for the axios supply chain RAT"
 Enter
-Sleep 1s
-Type "axios-rat-scan --no-process /projects"
+Sleep 500ms
+Type "axios-rat-scan --no-process --no-tree /projects"
 Enter
-Sleep 8s
+Sleep 4s

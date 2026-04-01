@@ -71,10 +71,10 @@ tasks:
     desc: Build + run integration tests in Docker (compiles Linux binary, plants IOCs, verifies detection, records GIF)
     cmds:
       - docker build -t axios-rat-test -f test/Dockerfile .
-      - docker run --rm -v {{.ROOT_DIR}}:/output axios-rat-test
+      - docker run --rm -v "{{.ROOT_DIR}}:/output" axios-rat-test
 
   test-interactive:
     desc: Shell into the test container for debugging
     cmds:
       - docker build -t axios-rat-test -f test/Dockerfile .
-      - docker run --rm -it -v {{.ROOT_DIR}}:/output --entrypoint /bin/bash axios-rat-test
+      - docker run --rm -it -v "{{.ROOT_DIR}}:/output" --entrypoint /bin/bash axios-rat-test
