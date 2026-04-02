@@ -1,6 +1,6 @@
 [package]
 name = "axios-rat-scan"
-version = "0.1.0"
+version = "0.5.0"
 edition = "2021"
 description = "Cross-platform scanner for the axios supply chain RAT (2026-03-31)"
 

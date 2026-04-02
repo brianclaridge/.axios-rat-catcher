@@ -2,7 +2,7 @@
 
 Cross-platform scanner for the [axios supply chain RAT](https://www.elastic.co/security-labs/axios-one-rat-to-rule-them-all) (2026-03-31). Single static binary, no dependencies.
 
-Compromised versions `axios@1.14.1` and `axios@0.30.4` inject `plain-crypto-js@4.2.1`, which drops a cross-platform RAT attributed to DPRK/UNC1069 (WAVESHAPER).
+Compromised versions `axios@1.14.1` and `axios@0.30.4` inject `plain-crypto-js@4.2.1`, which drops a cross-platform RAT attributed to DPRK/UNC1069 (WAVESHAPER). Formally attributed by [Google Threat Intelligence Group](https://cloud.google.com/blog/topics/threat-intelligence/north-korea-threat-actor-targets-axios-npm-package) on 2026-04-01 as **WAVESHAPER.V2**.
 
 ~100 million weekly downloads affected. Installation to full compromise: ~15 seconds.
 
@@ -98,8 +98,29 @@ cargo build --release
 
 ## References
 
+### Primary Analysis
 - [Elastic: Axios, One RAT to Rule Them All](https://www.elastic.co/security-labs/axios-one-rat-to-rule-them-all)
 - [Elastic: Detection Rules](https://www.elastic.co/security-labs/axios-supply-chain-compromise-detections)
+- [Google/Mandiant: UNC1069 Attribution](https://cloud.google.com/blog/topics/threat-intelligence/north-korea-threat-actor-targets-axios-npm-package)
+
+### Industry Coverage
+- [The Hacker News: Supply Chain Attack](https://thehackernews.com/2026/03/axios-supply-chain-attack-pushes-cross.html)
+- [The Hacker News: Google Attribution](https://thehackernews.com/2026/04/google-attributes-axios-npm-supply.html)
+- [Wiz: Impact Analysis](https://www.wiz.io/blog/axios-npm-compromised-in-supply-chain-attack)
+- [Malwarebytes: npm Trust](https://www.malwarebytes.com/blog/news/2026/03/axios-supply-chain-attack-chops-away-at-npm-trust)
+- [SOCRadar: CISO Guide & IOCs](https://socradar.io/blog/axios-npm-supply-chain-attack-2026-ciso-guide/)
+- [Sophos: Malware Analysis](https://www.sophos.com/en-us/blog/axios-npm-package-compromised-to-deploy-malware)
+- [SANS: Technical Breakdown](https://www.sans.org/blog/axios-npm-supply-chain-compromise-malicious-packages-remote-access-trojan)
+- [Trend Micro: Package Compromise](https://www.trendmicro.com/en_us/research/26/c/axios-npm-package-compromised.html)
+- [Aikido: Maintainer Hijack Details](https://www.aikido.dev/blog/axios-npm-compromised-maintainer-hijacked-rat)
+- [CyberScoop: Developer Tool Attack](https://cyberscoop.com/axios-software-developer-tool-attack-compromise/)
+- [Bloomberg: Industry Impact](https://www.bloomberg.com/news/articles/2026-03-31/axios-software-tool-used-by-millions-compromised-in-hack)
+- [Arctic Wolf: Supply Chain Impact](https://arcticwolf.com/resources/blog/supply-chain-attack-impacts-widely-used-axios-npm-package/)
+- [StepSecurity: Detection & Response](https://www.stepsecurity.io/blog/axios-compromised-on-npm-malicious-versions-drop-remote-access-trojan)
+- [Vercel: Remediation Steps](https://vercel.com/changelog/axios-package-compromise-and-remediation-steps)
+- [OX Security: Malicious Dependency](https://www.ox.security/blog/axios-compromised-with-a-malicious-dependency/)
+
+### Project Documentation
 - [CHANGELOG.md](CHANGELOG.md) — version history
 - [REMEDIATION.md](REMEDIATION.md) — incident response playbook
 - [ATTACK_FLOW.md](ATTACK_FLOW.md) — kill chain + sequence diagrams

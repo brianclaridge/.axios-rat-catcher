@@ -2,15 +2,33 @@
 
 ## Incident Overview
 
-On 2026-03-31, the npm account of axios maintainer "jasonsaayman" was hijacked (email changed to `ifstap@proton.me`). Two compromised versions were published that inject `plain-crypto-js@4.2.1` — a fake package whose postinstall hook (`setup.js`) deploys a cross-platform RAT. Elastic attributes overlap with **WAVESHAPER**, a C++ backdoor tracked by Mandiant and linked to **UNC1069 (DPRK)**.
+On 2026-03-31, the npm account of axios maintainer "jasonsaayman" was hijacked (email changed to `ifstap@proton.me`). Two compromised versions were published that inject `plain-crypto-js@4.2.1` — a fake package whose postinstall hook (`setup.js`) deploys a cross-platform RAT. Elastic attributes overlap with **WAVESHAPER**, a C++ backdoor tracked by Mandiant and linked to **UNC1069 (DPRK)**. On 2026-04-01, Google Threat Intelligence Group formally attributed the attack to UNC1069, confirming the RAT as **WAVESHAPER.V2**.
 
 ## Sources
 
-- Elastic Security Labs (primary analysis): https://www.elastic.co/security-labs/axios-one-rat-to-rule-them-all
+### Primary Analysis
+- Elastic Security Labs: https://www.elastic.co/security-labs/axios-one-rat-to-rule-them-all
 - Elastic detection rules: https://www.elastic.co/security-labs/axios-supply-chain-compromise-detections
 - Elastic detection-rules repo: https://github.com/elastic/detection-rules
 - Elastic protections-artifacts repo: https://github.com/elastic/protections-artifacts
-- The Hacker News coverage: https://thehackernews.com/2026/03/axios-supply-chain-attack-pushes-cross.html
+- Google/Mandiant UNC1069 attribution: https://cloud.google.com/blog/topics/threat-intelligence/north-korea-threat-actor-targets-axios-npm-package
+
+### Industry Coverage (2026-03-31 — 2026-04-01)
+- The Hacker News (attack): https://thehackernews.com/2026/03/axios-supply-chain-attack-pushes-cross.html
+- The Hacker News (attribution): https://thehackernews.com/2026/04/google-attributes-axios-npm-supply.html
+- Wiz: https://www.wiz.io/blog/axios-npm-compromised-in-supply-chain-attack
+- Malwarebytes: https://www.malwarebytes.com/blog/news/2026/03/axios-supply-chain-attack-chops-away-at-npm-trust
+- SOCRadar: https://socradar.io/blog/axios-npm-supply-chain-attack-2026-ciso-guide/
+- Sophos: https://www.sophos.com/en-us/blog/axios-npm-package-compromised-to-deploy-malware
+- SANS: https://www.sans.org/blog/axios-npm-supply-chain-compromise-malicious-packages-remote-access-trojan
+- Trend Micro: https://www.trendmicro.com/en_us/research/26/c/axios-npm-package-compromised.html
+- Aikido: https://www.aikido.dev/blog/axios-npm-compromised-maintainer-hijacked-rat
+- CyberScoop: https://cyberscoop.com/axios-software-developer-tool-attack-compromise/
+- Bloomberg: https://www.bloomberg.com/news/articles/2026-03-31/axios-software-tool-used-by-millions-compromised-in-hack
+- Arctic Wolf: https://arcticwolf.com/resources/blog/supply-chain-attack-impacts-widely-used-axios-npm-package/
+- StepSecurity: https://www.stepsecurity.io/blog/axios-compromised-on-npm-malicious-versions-drop-remote-access-trojan
+- Vercel: https://vercel.com/changelog/axios-package-compromise-and-remediation-steps
+- OX Security: https://www.ox.security/blog/axios-compromised-with-a-malicious-dependency/
 
 ---
 
@@ -25,6 +43,8 @@ On 2026-03-31, the npm account of axios maintainer "jasonsaayman" was hijacked (
 | 2026-03-31 00:21 | `axios@1.14.1` published, tagged `latest` |
 | 2026-03-31 01:00 | `axios@0.30.4` published, tagged `legacy` |
 | 2026-03-31 01:50 | GitHub Security Advisory filed |
+| 2026-03-31 ~03:15 | Compromised versions removed from npm |
+| 2026-04-01 | Google/Mandiant attributes to UNC1069 (DPRK), WAVESHAPER.V2 |
 
 ## Attack Chain
 
@@ -34,6 +54,10 @@ On 2026-03-31, the npm account of axios maintainer "jasonsaayman" was hijacked (
 4. Dropper detects OS, fetches platform-specific stage-2 from C2
 5. Stage-2 RAT installs, beacons every 60s
 6. Dropper self-cleans: `fs.unlink(__filename)`, swaps `package.md` → `package.json`
+
+## Account Compromise Details
+
+The attacker used a **stolen long-lived npm access token** (not 2FA bypass) to publish directly to the npm registry. Legitimate axios releases always include OIDC provenance metadata and SLSA build attestations — the malicious versions had neither, which is a key detection signal. The compromised versions were live for approximately **3 hours** before npm removed them.
 
 ---
 

@@ -1,6 +1,33 @@
 # Changelog
 
-## v0.4.0 (unreleased)
+## v0.5.0
+
+### New detection capabilities
+- **npm cache scanning** (~/.npm/_cacache) for retained malicious packages
+- **Anti-forensics detection**: cleaned compromise (deleted setup.js + removed postinstall)
+- **Anti-forensics detection**: orphan package.md dropper artifact
+- **Hidden /tmp executable scan** for Linux peinject payloads
+- **Compromised maintainer email check** (ifstap@proton.me)
+- **Suspicious PowerShell Base64 Decoding** (Windows, Elastic rule)
+- **Potential File Transfer via Curl for Windows** (Elastic rule)
+
+### Bug fixes
+- Fix self-detection: process scanner now excludes own PID + descendant tree
+- Fix Linux resolvectl leaking C2 domains in process args (show-cache + journalctl fallback)
+- Replace hardcoded IOC strings with iocs.rs constants throughout
+- cfg-gate platform-specific hash arrays to eliminate dead_code warnings
+
+### Elastic rule refinements
+- Curl/Wget via Node.js now requires HTTP URL in cmdline per Elastic spec
+- Process Backgrounding broadened from node/bun to 9 unusual parent runtimes
+- osascript check references C2_DOMAIN constant instead of hardcoded string
+
+### Tests
+- 26 assertions (up from 22), new test artifacts for all new capabilities
+
+---
+
+## v0.4.0
 
 ### Security hardening
 - External commands (`netstat`, `ss`, `ipconfig`, `resolvectl`) now use absolute paths to prevent PATH hijacking by the RAT
