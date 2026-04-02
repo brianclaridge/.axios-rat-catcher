@@ -1,0 +1,3 @@
+[submodule ".claude/statusline"]
+	path = .claude/statusline
+	url = https://github.com/brianclaridge/.3am.statusline

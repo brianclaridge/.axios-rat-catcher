@@ -49,5 +49,10 @@
   "spinnerVerbs": {
     "verbs": ["Catching rats"],
     "mode": "replace"
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "cd \"$CLAUDE_PROJECT_DIR/.claude/statusline\" && uv run src/statusline.py",
+    "padding": 2
   }
 }
