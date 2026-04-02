@@ -1,5 +1,7 @@
 # .axios-rat-catcher
 
+![Release](https://github.com/brianclaridge/.axios-rat-catcher/actions/workflows/release.yml/badge.svg)
+
 Cross-platform scanner for the [axios supply chain RAT](https://www.elastic.co/security-labs/axios-one-rat-to-rule-them-all) (2026-03-31). Single static binary, no dependencies.
 
 Compromised versions `axios@1.14.1` and `axios@0.30.4` inject `plain-crypto-js@4.2.1`, which drops a cross-platform RAT attributed to DPRK/UNC1069 (WAVESHAPER). Formally attributed by [Google Threat Intelligence Group](https://cloud.google.com/blog/topics/threat-intelligence/north-korea-threat-actor-targets-axios-npm-package) on 2026-04-01 as **WAVESHAPER.V2**.

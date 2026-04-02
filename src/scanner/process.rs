@@ -65,8 +65,6 @@ pub fn scan(findings: &mut Vec<Finding>) {
             .exe()
             .map(|p| p.display().to_string())
             .unwrap_or_default();
-        let exe_lower = exe_path.to_lowercase();
-
         let parent_pid = process.parent().map(|p| p.as_u32());
         let parent_name = parent_pid
             .and_then(|ppid| pid_name.get(&ppid))
@@ -78,6 +76,7 @@ pub fn scan(findings: &mut Vec<Finding>) {
         // ── Windows: Renamed PowerShell (Elastic: Execution via Renamed Signed Binary Proxy) ──
         #[cfg(windows)]
         {
+            let exe_lower = exe_path.to_lowercase();
             let programdata =
                 std::env::var("PROGRAMDATA").unwrap_or_else(|_| r"C:\ProgramData".into());
             let pd_lower = programdata.to_lowercase();

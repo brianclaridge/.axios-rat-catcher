@@ -50,7 +50,8 @@ fn check_temp_artifact(findings: &mut Vec<Finding>) {
             ));
         }
         // Windows-specific transient files
-        if cfg!(windows) {
+        #[cfg(windows)]
+        {
             for name in &["6202033.vbs", "6202033.ps1"] {
                 let p = Path::new(dir).join(name);
                 if p.exists() {
