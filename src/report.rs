@@ -283,5 +283,6 @@ pub fn write_report(findings: &[Finding], elapsed: std::time::Duration, report_p
     writeln!(f, "3. Rotate ALL credentials accessed from this machine").ok();
     writeln!(f, "4. Downgrade axios to 1.14.0 or 0.30.3").ok();
     writeln!(f, "5. Remove plain-crypto-js from node_modules").ok();
-    writeln!(f, "6. Block egress to sfrclak.com / 142.11.206.73").ok();
+    writeln!(f, "6. Block egress to {} / {} on port {} (endpoint: {})",
+        crate::iocs::C2_DOMAIN, crate::iocs::C2_IP, crate::iocs::C2_PORT, crate::iocs::C2_ENDPOINT).ok();
 }

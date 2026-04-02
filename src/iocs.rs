@@ -17,7 +17,7 @@ pub const C2_ENDPOINT: &str = "/6202033";
 pub const C2_PAYLOAD_DOMAIN: &str = "packages.npm.org";
 
 /// All C2 domains to check in DNS caches and network connections
-pub const C2_DOMAINS: &[&str] = &["sfrclak.com", "packages.npm.org"];
+pub const C2_DOMAINS: &[&str] = &[C2_DOMAIN, C2_PAYLOAD_DOMAIN];
 
 /// Spoofed User-Agent used by all RAT variants — IE8 on Windows XP
 /// Per Elastic: "the toolkit's most reliable detection indicator"
@@ -27,15 +27,19 @@ pub const C2_USER_AGENT: &str =
 /// SHA-256 hashes of known malicious files
 pub const HASH_SETUP_JS: &str =
     "e10b1fa84f1d6481625f741b69892780140d4e0e7769e7491e5f4d894c2e0e09";
+#[cfg(target_os = "macos")]
 pub const HASHES_MACOS_RAT: &[&str] = &[
     "92ff08773995ebc8d55ec4b8e1a225d0d1e51efa4ef88b8849d0071230c9645a",
 ];
+#[cfg(windows)]
 pub const HASHES_WINDOWS_PS1: &[&str] = &[
     "ed8560c1ac7ceb6983ba995124d5917dc1a00288912387a6389296637d5f815c",
     "617b67a8e1210e4fc87c92d1d1da45a2f311c08d26e89b12307cf583c900d101",
 ];
+#[cfg(windows)]
 pub const HASH_WINDOWS_BAT: &str =
     "e49c2732fb9861548208a78e72996b9c3c470b6b562576924bcc3a9fb75bf9ff";
+#[cfg(target_os = "linux")]
 pub const HASHES_LINUX_RAT: &[&str] = &[
     "6483c004e207137385f480909d6edecf1b699087378aa91745ecba7c3394f9d7",
     "fcb81618bb15edfdedfb638b4c08a2af9cac9ecfa551af135a8402bf980375cf",
@@ -74,3 +78,23 @@ pub const SHELL_NAMES: &[&str] = &[
 
 /// Max file size (bytes) to parse as JSON. Prevents OOM on malicious files.
 pub const MAX_JSON_SIZE: u64 = 10 * 1024 * 1024; // 10 MB
+
+/// Compromised maintainer email (account takeover indicator)
+pub const COMPROMISED_MAINTAINER_EMAIL: &str = "ifstap@proton.me";
+
+/// Anti-forensics: the dropper renames package.md -> package.json after cleanup
+pub const ANTI_FORENSICS_PACKAGE_MD: &str = "package.md";
+
+/// PowerShell Base64 decode flags (Elastic: "Suspicious PowerShell Base64 Decoding")
+#[cfg(windows)]
+pub const PS_BASE64_FLAGS: &[&str] = &["-encodedcommand", "-enc ", "-ec ", "frombase64string"];
+
+/// Curl flags for Windows file transfer (Elastic: "Potential File Transfer via Curl for Windows")
+#[cfg(windows)]
+pub const CURL_TRANSFER_FLAGS: &[&str] = &["-o ", "--output "];
+
+/// Unusual parent processes for shell backgrounding detection
+/// (Elastic: "Process Backgrounded by Unusual Parent")
+pub const UNUSUAL_PARENTS: &[&str] = &[
+    "node", "bun", "deno", "python", "python3", "ruby", "php", "java", "dotnet",
+];

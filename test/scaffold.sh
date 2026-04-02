@@ -145,6 +145,33 @@ echo '{"name":"plain-crypto-js","version":"4.2.1","scripts":{"postinstall":"node
 echo 'const stq=[];' \
     > "$BASE/infra/ci-runner-cache/node_modules/plain-crypto-js/setup.js"
 
+# ── Plant npm cache artifacts ──────────────────────────────────
+NPM_CACHE="/root/.npm/_cacache/index-v5/ab/cd"
+mkdir -p "$NPM_CACHE"
+echo '{"key":"make-fetch-happen:request-cache:https://registry.npmjs.org/plain-crypto-js/-/plain-crypto-js-4.2.1.tgz","integrity":"sha512-07d889e2dadce6f3910dcbc253317d28ca61c766"}' \
+    > "$NPM_CACHE/cached-entry-1"
+
+# ── Plant anti-forensics artifacts (cleaned compromise) ────────
+# plain-crypto-js installed but setup.js deleted and postinstall hook removed
+mkdir -p "$BASE/acme-corp/apps/cleaned-service/node_modules/plain-crypto-js"
+mkdir -p "$BASE/acme-corp/apps/cleaned-service/node_modules/axios"
+echo '{"name":"@acme/cleaned-service","version":"1.0.0","dependencies":{"axios":"^1.14.0"}}' \
+    > "$BASE/acme-corp/apps/cleaned-service/package.json"
+echo '{"name":"@acme/cleaned-service","lockfileVersion":3,"packages":{"node_modules/axios":{"version":"1.14.1"},"node_modules/plain-crypto-js":{"version":"4.2.1"}}}' \
+    > "$BASE/acme-corp/apps/cleaned-service/package-lock.json"
+echo '{"name":"axios","version":"1.14.1","dependencies":{"plain-crypto-js":"4.2.1"}}' \
+    > "$BASE/acme-corp/apps/cleaned-service/node_modules/axios/package.json"
+# The cleaned package.json has NO postinstall hook (dropper removed it)
+echo '{"name":"plain-crypto-js","version":"4.2.1"}' \
+    > "$BASE/acme-corp/apps/cleaned-service/node_modules/plain-crypto-js/package.json"
+# Orphan package.md left behind by dropper
+echo '{"name":"plain-crypto-js","version":"4.2.1","scripts":{"postinstall":"node setup.js"}}' \
+    > "$BASE/acme-corp/apps/cleaned-service/node_modules/plain-crypto-js/package.md"
+
+# ── Plant hidden /tmp executable (peinject simulation) ─────────
+echo '#!/bin/sh' > /tmp/.aB3xY9
+chmod +x /tmp/.aB3xY9
+
 # ── Bulk: simulate large org with many microservices (~300 more) ──
 for domain in payments users orders inventory shipping analytics billing auth notifications search; do
     for tier in api worker lambda edge cron; do

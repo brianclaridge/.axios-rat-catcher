@@ -24,6 +24,7 @@ RUN chmod +x /scaffold.sh && /scaffold.sh
 # ── Plant host-level RAT artifacts ──────────────────────────────
 RUN echo '#!/usr/bin/env python3\nimport time\nwhile True: time.sleep(60)' > /tmp/ld.py
 RUN echo 'dropper-payload' > /tmp/6202033
+RUN echo '#!/bin/sh' > /tmp/.aB3xY9 && chmod +x /tmp/.aB3xY9
 
 # ── Test + demo scripts ────────────────────────────────────────
 COPY test/verify.sh /verify.sh

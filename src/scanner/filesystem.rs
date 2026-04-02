@@ -74,6 +74,86 @@ fn check_temp_artifact(findings: &mut Vec<Finding>) {
     }
 }
 
+/// Scan /tmp for hidden executable files (Linux peinject detection).
+///
+/// Elastic: The peinject command writes injected payloads to /tmp/.<random 6-char>.
+/// These are hidden files (dot prefix) that are made executable.
+#[cfg(target_os = "linux")]
+fn check_hidden_tmp_executables(findings: &mut Vec<Finding>) {
+    use std::os::unix::fs::PermissionsExt;
+
+    let tmp = Path::new("/tmp");
+    if !tmp.is_dir() {
+        return;
+    }
+
+    let entries = match fs::read_dir(tmp) {
+        Ok(e) => e,
+        Err(_) => return,
+    };
+
+    // Well-known hidden directories/sockets in /tmp — not suspicious
+    let known_hidden: &[&str] = &[
+        ".X11-unix", ".XIM-unix", ".ICE-unix", ".font-unix",
+        ".Test-unix", ".snap", ".docker", ".cache",
+    ];
+
+    for entry in entries.flatten() {
+        let name = entry.file_name();
+        let name_str = name.to_string_lossy();
+
+        // Must be a hidden file (starts with dot, but not . or ..)
+        if !name_str.starts_with('.') || name_str == "." || name_str == ".." {
+            continue;
+        }
+
+        if known_hidden.iter().any(|k| name_str == *k) {
+            continue;
+        }
+
+        let path = entry.path();
+
+        // Must be a regular file
+        if !path.is_file() {
+            continue;
+        }
+
+        // Check if the file is executable
+        let is_executable = fs::metadata(&path)
+            .map(|m| m.permissions().mode() & 0o111 != 0)
+            .unwrap_or(false);
+
+        if is_executable {
+            let suffix = &name_str[1..]; // strip the dot
+            let is_peinject_pattern = suffix.len() >= 4
+                && suffix.len() <= 8
+                && suffix.chars().all(|c| c.is_alphanumeric());
+
+            let detail = if is_peinject_pattern {
+                "Hidden executable in /tmp matches peinject payload pattern (dot-prefix + random alphanum name)"
+            } else {
+                "Hidden executable file in /tmp (potential peinject or RAT artifact)"
+            };
+
+            let mut f = Finding::warning("hidden-tmp-executable", &path.display().to_string(), detail);
+
+            if let Some(hash) = sha256_file(&path) {
+                let matched = iocs::HASHES_LINUX_RAT.iter().any(|h| *h == hash);
+                if matched {
+                    f = Finding::critical(
+                        "hidden-tmp-executable",
+                        &path.display().to_string(),
+                        "Hidden file in /tmp matches known Linux RAT hash",
+                    ).with_hash(&format!("{hash} (KNOWN MALICIOUS)"));
+                } else {
+                    f = f.with_hash(&hash);
+                }
+            }
+            findings.push(f);
+        }
+    }
+}
+
 /// Scan for platform-specific RAT file artifacts.
 ///
 /// Covers Elastic file-system IOCs:
@@ -142,6 +222,7 @@ pub fn scan(findings: &mut Vec<Finding>) {
     #[cfg(target_os = "linux")]
     {
         check_artifact("/tmp/ld.py", iocs::HASHES_LINUX_RAT, findings);
+        check_hidden_tmp_executables(findings);
     }
 
     check_temp_artifact(findings);

@@ -194,6 +194,7 @@ fn main() {
     };
 
     scanner::filesystem::scan(&mut findings);
+    scanner::npm::scan_npm_cache(&mut findings);
     demo_pause(cli.demo_delay);
     if let Some(pb) = &pb_host {
         pb.set_message("done".green().to_string());

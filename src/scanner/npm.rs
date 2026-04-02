@@ -7,6 +7,18 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::Ordering;
 use walkdir::WalkDir;
 
+/// Get the user's home directory without adding a dependency.
+fn home_dir() -> Option<std::path::PathBuf> {
+    #[cfg(windows)]
+    {
+        std::env::var("USERPROFILE").ok().map(std::path::PathBuf::from)
+    }
+    #[cfg(not(windows))]
+    {
+        std::env::var("HOME").ok().map(std::path::PathBuf::from)
+    }
+}
+
 /// Parse a semver string into (major, minor, patch).
 fn parse_version(v: &str) -> Option<(&str, &str, &str)> {
     let clean = v.trim().trim_start_matches(|c: char| !c.is_ascii_digit());
@@ -112,6 +124,30 @@ fn scan_package_json(path: &Path) -> Vec<Finding> {
                     ));
                 }
             }
+        }
+    }
+
+    // Check for compromised maintainer email in author field
+    if let Some(author) = data.get("author") {
+        let author_str = match author {
+            serde_json::Value::String(s) => s.to_lowercase(),
+            serde_json::Value::Object(obj) => {
+                obj.get("email")
+                    .and_then(|e| e.as_str())
+                    .unwrap_or("")
+                    .to_lowercase()
+            }
+            _ => String::new(),
+        };
+        if author_str.contains(iocs::COMPROMISED_MAINTAINER_EMAIL) {
+            findings.push(Finding::warning(
+                "compromised-maintainer",
+                &path_str,
+                &format!(
+                    "Package author contains compromised maintainer email '{}'",
+                    iocs::COMPROMISED_MAINTAINER_EMAIL
+                ),
+            ));
         }
     }
 
@@ -317,6 +353,39 @@ fn scan_node_modules(nm_path: &Path) -> Vec<Finding> {
                 }
                 findings.push(f);
             }
+            // Anti-forensics: dropper deletes setup.js and swaps package.md -> package.json
+            let pkg_json = pkg_dir.join("package.json");
+            if pkg_json.is_file() && !setup.is_file() {
+                if let Some(data) = read_json_safe(&pkg_json) {
+                    let has_hook = data.get("scripts")
+                        .and_then(|s| s.as_object())
+                        .map(|s| iocs::SUSPICIOUS_HOOKS.iter().any(|h| s.contains_key(*h)))
+                        .unwrap_or(false);
+                    if !has_hook {
+                        findings.push(Finding::critical(
+                            "cleaned-compromise",
+                            &pkg_dir.display().to_string(),
+                            &format!(
+                                "Malicious '{pkg}' installed but setup.js deleted and \
+                                 postinstall hook removed — dropper self-cleaned (anti-forensics)"
+                            ),
+                        ));
+                    }
+                }
+            }
+
+            // Check for orphan package.md (dropper backup before overwrite)
+            let package_md = pkg_dir.join(iocs::ANTI_FORENSICS_PACKAGE_MD);
+            if package_md.is_file() {
+                findings.push(Finding::critical(
+                    "anti-forensics-package-md",
+                    &package_md.display().to_string(),
+                    &format!(
+                        "Orphan package.md in '{pkg}' — dropper artifact \
+                         (original package.json was backed up before overwrite)"
+                    ),
+                ));
+            }
         }
     }
 
@@ -360,6 +429,16 @@ fn scan_node_modules(nm_path: &Path) -> Vec<Finding> {
                 &format!("Secondary attack package '{pkg}' installed"),
             ));
         }
+    }
+
+    // Check for package.md in axios directory (anti-forensics artifact)
+    let axios_md = nm_path.join("axios").join(iocs::ANTI_FORENSICS_PACKAGE_MD);
+    if axios_md.is_file() {
+        findings.push(Finding::warning(
+            "anti-forensics-package-md",
+            &axios_md.display().to_string(),
+            "Orphan package.md in axios — possible dropper cleanup artifact",
+        ));
     }
 
     let _ = nm_str;
@@ -508,6 +587,71 @@ pub fn write_sources_map(targets: &ScanTargets, output: &Path) {
             writeln!(f, "    lockfile_type: \"{lt}\"").ok();
         }
         writeln!(f, "    has_node_modules: {}", src.has_node_modules).ok();
+    }
+}
+
+/// Scan the npm cache (~/.npm/_cacache) for references to malicious packages.
+///
+/// The npm cache stores content-addressable tarballs. After cleanup,
+/// the cache may retain the malicious package data and reinstall it.
+pub fn scan_npm_cache(findings: &mut Vec<Finding>) {
+    let home = match home_dir() {
+        Some(h) => h,
+        None => return,
+    };
+
+    let cache_index = home.join(".npm").join("_cacache").join("index-v5");
+    if !cache_index.is_dir() {
+        return;
+    }
+
+    let search_terms: Vec<&str> = iocs::MALICIOUS_PACKAGES.iter()
+        .chain(iocs::SECONDARY_PACKAGES.iter())
+        .copied()
+        .collect();
+
+    for entry in WalkDir::new(&cache_index)
+        .max_depth(4)
+        .into_iter()
+        .filter_map(|e| e.ok())
+    {
+        if !entry.file_type().is_file() {
+            continue;
+        }
+        // Index files are small (< 4KB typically). Skip anything large.
+        if let Ok(meta) = entry.metadata() {
+            if meta.len() > 64 * 1024 {
+                continue;
+            }
+        }
+        if let Ok(content) = std::fs::read_to_string(entry.path()) {
+            let content_lower = content.to_lowercase();
+            for term in &search_terms {
+                if content_lower.contains(&term.to_lowercase()) {
+                    findings.push(Finding::warning(
+                        "npm-cache-malicious",
+                        &entry.path().display().to_string(),
+                        &format!(
+                            "Malicious package '{term}' referenced in npm cache \
+                             — cache may retain compromised artifacts after cleanup"
+                        ),
+                    ));
+                    break;
+                }
+            }
+            for shasum in iocs::COMPROMISED_SHASUMS {
+                if content_lower.contains(shasum) {
+                    findings.push(Finding::warning(
+                        "npm-cache-compromised-integrity",
+                        &entry.path().display().to_string(),
+                        &format!(
+                            "Compromised package shasum {shasum} found in npm cache index"
+                        ),
+                    ));
+                    break;
+                }
+            }
+        }
     }
 }
 

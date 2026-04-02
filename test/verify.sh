@@ -89,10 +89,26 @@ echo "  ────────────────────────
 check "Stale compromised axios in CI cache" "ci-runner-cache" "$RESULT"
 
 echo ""
+echo -e "\033[1m  npm cache detection\033[0m"
+echo "  ────────────────────────────────────────"
+check "Detects plain-crypto-js in npm cache" "npm-cache-malicious" "$RESULT"
+
+echo ""
+echo -e "\033[1m  Anti-forensics detection\033[0m"
+echo "  ────────────────────────────────────────"
+check "Detects cleaned compromise (no setup.js, no hook)" "cleaned-compromise" "$RESULT"
+check "Detects orphan package.md" "anti-forensics-package-md" "$RESULT"
+
+echo ""
+echo -e "\033[1m  Hidden /tmp executable detection\033[0m"
+echo "  ────────────────────────────────────────"
+check "Detects hidden executable in /tmp" "hidden-tmp-executable" "$RESULT"
+
+echo ""
 echo -e "\033[1m  False positive checks\033[0m"
 echo "  ────────────────────────────────────────"
 # Remove host artifacts, scan only clean projects
-rm -f /tmp/ld.py /tmp/6202033
+rm -f /tmp/ld.py /tmp/6202033 /tmp/.aB3xY9
 CLEAN_RESULT=$("$SCANNER" --json --no-process /projects/acme-corp/packages/shared-lib-1 2>/dev/null || true)
 check_absent "Clean shared-lib produces no findings" "CRITICAL" "$CLEAN_RESULT"
 

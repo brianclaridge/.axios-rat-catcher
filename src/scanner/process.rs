@@ -3,6 +3,24 @@ use crate::report::Finding;
 use sysinfo::System;
 use std::collections::HashMap;
 
+/// Check if `check_pid` is a descendant (child, grandchild, etc.) of `ancestor_pid`.
+fn is_descendant_of(check_pid: u32, ancestor_pid: u32, sys: &System) -> bool {
+    let mut current = check_pid;
+    for _ in 0..32 {
+        let parent = sys.processes()
+            .get(&sysinfo::Pid::from_u32(current))
+            .and_then(|p| p.parent())
+            .map(|p| p.as_u32());
+        match parent {
+            Some(ppid) if ppid == ancestor_pid => return true,
+            Some(ppid) if ppid == 0 || ppid == current => return false,
+            Some(ppid) => current = ppid,
+            None => return false,
+        }
+    }
+    false
+}
+
 /// Check running processes for signs of active RAT execution.
 ///
 /// Covers these Elastic detection rules:
@@ -14,6 +32,8 @@ use std::collections::HashMap;
 pub fn scan(findings: &mut Vec<Finding>) {
     let mut sys = System::new();
     sys.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
+
+    let self_pid = std::process::id();
 
     // Build parent PID -> process name map for parent-child chain detection
     let mut pid_name: HashMap<u32, String> = HashMap::new();
@@ -30,6 +50,11 @@ pub fn scan(findings: &mut Vec<Finding>) {
     }
 
     for (pid, process) in sys.processes() {
+        // Skip the scanner itself and its child processes to prevent self-detection
+        if pid.as_u32() == self_pid || is_descendant_of(pid.as_u32(), self_pid, &sys) {
+            continue;
+        }
+
         let name = process.name().to_string_lossy().to_lowercase();
         let cmd: String = process.cmd().iter()
             .map(|s| s.to_string_lossy().to_string())
@@ -75,6 +100,38 @@ pub fn scan(findings: &mut Vec<Finding>) {
                     "Non-PowerShell binary executing with -NoProfile -ep Bypass flags",
                 ));
             }
+
+            // Elastic: Suspicious PowerShell Base64 Decoding
+            if (name.contains("powershell") || name.contains("pwsh") || name == "wt.exe")
+                && iocs::PS_BASE64_FLAGS.iter().any(|flag| cmd.contains(flag))
+            {
+                findings.push(Finding::critical(
+                    "ps-base64-decode",
+                    &loc,
+                    "PowerShell Base64 decoding detected (Elastic: Suspicious PowerShell Base64 Decoding)",
+                ));
+            }
+
+            // Elastic: Potential File Transfer via Curl for Windows
+            if name == "curl.exe"
+                && cmd.contains("http")
+                && iocs::CURL_TRANSFER_FLAGS.iter().any(|flag| cmd.contains(flag))
+            {
+                let is_c2 = iocs::C2_DOMAINS.iter().any(|d| cmd.contains(d));
+                if is_c2 {
+                    findings.push(Finding::critical(
+                        "curl-file-transfer-c2",
+                        &loc,
+                        "curl.exe downloading from C2 domain (Elastic: File Transfer via Curl for Windows)",
+                    ));
+                } else {
+                    findings.push(Finding::warning(
+                        "curl-file-transfer",
+                        &loc,
+                        "curl.exe file download detected (Elastic: Potential File Transfer via Curl for Windows)",
+                    ));
+                }
+            }
         }
 
         // ── macOS: com.apple.act.mond RAT ──
@@ -90,7 +147,7 @@ pub fn scan(findings: &mut Vec<Finding>) {
 
             // Elastic: Suspicious URL as argument to Self-Signed Binary
             // osascript executing shell commands (dropper mechanism)
-            if name == "osascript" && (cmd.contains("do shell script") || cmd.contains("curl") || cmd.contains("sfrclak")) {
+            if name == "osascript" && (cmd.contains("do shell script") || cmd.contains("curl") || cmd.contains(iocs::C2_DOMAIN)) {
                 findings.push(Finding::critical(
                     "osascript-dropper",
                     &loc,
@@ -113,7 +170,7 @@ pub fn scan(findings: &mut Vec<Finding>) {
 
         // ── Cross-platform: Spoofed IE8 User-Agent in command line ──
         // Per Elastic: "the toolkit's most reliable detection indicator"
-        if cmd.contains("msie 8.0") && cmd.contains("windows nt 5.1") {
+        if cmd.contains(iocs::C2_USER_AGENT) {
             findings.push(Finding::critical(
                 "c2-user-agent",
                 &loc,
@@ -138,27 +195,28 @@ pub fn scan(findings: &mut Vec<Finding>) {
             let parent_is_node = parent_name.starts_with("node") || parent_name == "bun";
             let parent_is_shell = iocs::SHELL_NAMES.iter().any(|s| parent_name == *s);
 
-            if parent_is_node || (parent_is_shell && grandparent_is_node) {
+            if (parent_is_node || (parent_is_shell && grandparent_is_node)) && cmd.contains("http") {
                 findings.push(Finding::critical(
                     "node-child-fetch",
                     &loc,
                     &format!(
-                        "{name} spawned via Node.js (parent: {parent_name}) — Elastic: Curl or Wget Spawned via Node.js"
+                        "{name} with HTTP URL spawned via Node.js (parent: {parent_name}) — Elastic: Curl or Wget Spawned via Node.js"
                     ),
                 ));
             }
         }
 
         // ── Elastic: Process Backgrounded by Unusual Parent ──
-        // shell -c "... &" spawned by node
         if iocs::SHELL_NAMES.iter().any(|s| name == *s)
             && cmd.contains("-c") && cmd.contains('&')
-            && (parent_name.starts_with("node") || parent_name == "bun")
+            && iocs::UNUSUAL_PARENTS.iter().any(|p| parent_name.starts_with(p))
         {
             findings.push(Finding::warning(
-                "backgrounded-by-node",
+                "backgrounded-by-unusual-parent",
                 &loc,
-                "Shell with backgrounded command spawned by Node.js (Elastic: Process Backgrounded by Unusual Parent)",
+                &format!(
+                    "Shell with backgrounded command spawned by {parent_name} (Elastic: Process Backgrounded by Unusual Parent)"
+                ),
             ));
         }
 

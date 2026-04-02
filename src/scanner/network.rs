@@ -147,19 +147,44 @@ fn scan_dns_cache(findings: &mut Vec<Finding>) {
 
     #[cfg(target_os = "linux")]
     {
+        // Use resolvectl show-cache (systemd 256+) to dump the entire DNS cache
+        // without putting IOC domain strings on the command line.
         let cmd = if Path::new(RESOLVECTL).exists() { RESOLVECTL } else { "resolvectl" };
-        // BUG FIX: loop through ALL C2 domains, not just the primary one
-        for domain in iocs::C2_DOMAINS {
-            if let Ok(output) = Command::new(cmd)
-                .args(["query", "--cache", "--legend=no", domain])
-                .output()
-            {
-                let text = String::from_utf8_lossy(&output.stdout).to_lowercase();
-                if text.contains(iocs::C2_IP) || text.contains(domain) {
+        if let Ok(output) = Command::new(cmd).args(["show-cache"]).output() {
+            let text = String::from_utf8_lossy(&output.stdout).to_lowercase();
+            for domain in iocs::C2_DOMAINS {
+                if text.contains(domain) {
                     findings.push(Finding::critical(
                         "dns-cache-c2",
                         "dns-cache",
                         &format!("C2 domain '{domain}' found in systemd-resolved cache"),
+                    ));
+                }
+            }
+            if text.contains(iocs::C2_IP) {
+                findings.push(Finding::critical(
+                    "dns-cache-c2-ip",
+                    "dns-cache",
+                    &format!(
+                        "C2 IP {} found in systemd-resolved cache",
+                        iocs::C2_IP
+                    ),
+                ));
+            }
+        }
+
+        // Fallback: check journalctl for DNS resolution logs (older systemd)
+        if let Ok(output) = Command::new("/usr/bin/journalctl")
+            .args(["--unit=systemd-resolved", "--since=-1h", "--no-pager", "-q"])
+            .output()
+        {
+            let text = String::from_utf8_lossy(&output.stdout).to_lowercase();
+            for domain in iocs::C2_DOMAINS {
+                if text.contains(domain) {
+                    findings.push(Finding::critical(
+                        "dns-log-c2",
+                        "dns-log",
+                        &format!("C2 domain '{domain}' found in systemd-resolved journal (last 1h)"),
                     ));
                 }
             }
